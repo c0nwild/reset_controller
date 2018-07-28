@@ -14,28 +14,28 @@
 
 volatile uint8_t go_to_sleep = TRUE;
 
-void start_timer() {
-	//prescaler clk/1014
-	TCCR0B |= (1 << CS02) | (1 << CS00);
+//prescaler clk/1014
+#define start_timer \
+	TCCR0B |= (1 << CS02) | (1 << CS00); \
 	go_to_sleep = FALSE;
-}
 
-void stop_timer() {
-	//set cs02:0 to '0'
-	TCCR0B &= ~((1 << CS02) | (1 << CS01) | (1 << CS00));
-	TCNT0 = 0;
+
+//set cs02:0 to '0'
+#define stop_timer \
+	TCCR0B &= ~((1 << CS02) | (1 << CS01) | (1 << CS00)); \
+	TCNT0 = 0; \
 	go_to_sleep = TRUE;
-}
+
 
 ISR(INT0_vect, ISR_BLOCK) {
-	PORTB &= ~(1 << PB0);
-	start_timer();
+	PORTB |= (1 << PB0);
+	start_timer;
 	reti();
 }
 
 ISR(TIM0_COMPA_vect, ISR_BLOCK) {
-	PORTB |= (1 << PB0);
-	stop_timer();
+	PORTB &= ~(1 << PB0);
+	stop_timer;
 	reti();
 }
 
@@ -43,13 +43,13 @@ void chip_setup() {
 	cli();
 	DDRB = 0;
 	DDRB |= (1 << PB0);
-	PORTB |= (1 << PB0);
+	PORTB = 0;
 	//pull-up
 	PORTB |= (1 << PB1);
 	//interrupt on compare match a
-	TIMSK0 |= (1 << OCIE0A);
+	TIMSK |= (1 << OCIE0A);
 	OCR0A = 0xa0;
-	//int0 bei fallender Flanke
+	//int0 bei fallender flanke
 	MCUCR |= (1 << ISC01);
 	GIMSK |= (1 << INT0);
 	sei();
@@ -58,7 +58,7 @@ void chip_setup() {
 void do_sleep() {
 	set_sleep_mode(SLEEP_MODE_PWR_DOWN);
 	//nur falls wir eine Flanke verpasst haben
-	sleep_mode();
+	//sleep_mode();
 }
 
 int main(void) {
@@ -67,5 +67,6 @@ int main(void) {
 		if (go_to_sleep == TRUE)
 			do_sleep();
 	}
+	return 0;
 }
 
