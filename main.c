@@ -25,12 +25,12 @@ volatile uint16_t int0_cnt;
 #define start_timer(t_val) \
 	TCNT0 = 0; \
 	OCR0A = t_val; \
-	TCCR0B |= (1 << CS02) | (1 << CS00); \
+	TCCR0A |= (1 << CS02) | (1 << CS00); \
 	go_to_sleep = FALSE;
 
 //set cs02:0 to '0'
 #define stop_timer \
-	TCCR0B &= ~((1 << CS02) | (1 << CS01) | (1 << CS00)); \
+	TCCR0A &= ~((1 << CS02) | (1 << CS01) | (1 << CS00)); \
 	TCNT0 = 0; \
 	go_to_sleep = TRUE;
 
@@ -51,7 +51,7 @@ ISR(TIM0_COMPA_vect, ISR_BLOCK) {
 }
 
 ISR(WDT_vect, ISR_BLOCK) {
-	WDTCR |= (1 << WDIE);
+	WDTCSR |= (1 << WDIE);
 	++cycle_cnt;
 	if (cycle_cnt > WAIT_CYCLES) {
 		PORTB |= (1 << PB0);
@@ -66,8 +66,8 @@ void start_watchdog(int interval) {
 
 	// This order of commands is important and cannot be combined
 	MCUSR = 0;                   // reset Brown-out, Ext and PowerOn reset flags
-	WDTCR |= 0b00011000; // see docs, set (WDCE -> next set prescaler), (WDE -> Interrupt on timeout)
-	WDTCR = 0b01000000 | interval;     // set WDIE, and appropriate delay
+	WDTCSR |= 0b00011000; // see docs, set (WDCE -> next set prescaler), (WDE -> Interrupt on timeout)
+	WDTCSR = 0b01000000 | interval;     // set WDIE, and appropriate delay
 	ADCSRA &= ~_BV(ADEN);
 }
 
@@ -80,11 +80,11 @@ void chip_setup() {
 	//pull-up
 	PORTB |= (1 << PB1);
 	//interrupt on compare match a
-	TIMSK |= (1 << OCIE0A);
+	TIMSK0 |= (1 << OCIE0A);
 	OCR0A = 0xa0;
 //	int0 bei fallender flanke
 	MCUCR |= (1 << ISC01);
-	GIMSK |= (1 << INT0);
+	EIMSK |= (1 << INT0);
 
 	set_sleep_mode(SLEEP_MODE_IDLE);
 
