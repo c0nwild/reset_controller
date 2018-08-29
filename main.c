@@ -9,6 +9,8 @@
 #include <avr/interrupt.h>
 #include <avr/sleep.h>
 #include <avr/wdt.h>
+#include <util/twi.h>
+#include "twislave.h"
 
 #define WAIT_CYCLES 10
 
@@ -20,7 +22,9 @@ volatile uint8_t cycle_cnt;
 volatile uint16_t int0_cnt;
 
 //prescaler clk/1014
-#define start_timer \
+#define start_timer(t_val) \
+	TCNT0 = 0; \
+	OCR0A = t_val; \
 	TCCR0B |= (1 << CS02) | (1 << CS00); \
 	go_to_sleep = FALSE;
 
@@ -34,7 +38,7 @@ const int CSleep2Seconds = 0b00000110;
 
 ISR(INT0_vect, ISR_BLOCK) {
 	PORTB |= (1 << PB0);
-	start_timer
+	start_timer(0x0a)
 	;
 //	reti();
 }
@@ -51,7 +55,7 @@ ISR(WDT_vect, ISR_BLOCK) {
 	++cycle_cnt;
 	if (cycle_cnt > WAIT_CYCLES) {
 		PORTB |= (1 << PB0);
-		start_timer
+		start_timer(0x0a)
 		;
 		cycle_cnt = 0;
 	}
@@ -84,7 +88,7 @@ void chip_setup() {
 
 	set_sleep_mode(SLEEP_MODE_IDLE);
 
-	start_watchdog(CSleep2Seconds);
+//	start_watchdog(CSleep2Seconds);
 
 	sei();
 }
