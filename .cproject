@@ -30,7 +30,7 @@
 							<tool id="de.innot.avreclipse.tool.compiler.winavr.app.debug.669887357" name="AVR Compiler" superClass="de.innot.avreclipse.tool.compiler.winavr.app.debug">
 								<option id="de.innot.avreclipse.compiler.option.debug.level.971841939" name="Generate Debugging Info" superClass="de.innot.avreclipse.compiler.option.debug.level" useByScannerDiscovery="false"/>
 								<option id="de.innot.avreclipse.compiler.option.optimize.1628501925" name="Optimization Level" superClass="de.innot.avreclipse.compiler.option.optimize" useByScannerDiscovery="false"/>
-								<option id="de.innot.avreclipse.compiler.option.undef.1408974829" name="Undefine Syms (-U)" superClass="de.innot.avreclipse.compiler.option.undef" useByScannerDiscovery="false" valueType="undefDefinedSymbols"/>
+								<option id="de.innot.avreclipse.compiler.option.undef.1408974829" name="Undefine Syms (-U)" superClass="de.innot.avreclipse.compiler.option.undef" useByScannerDiscovery="false"/>
 								<option id="de.innot.avreclipse.compiler.option.def.1005932484" name="Define Syms (-D)" superClass="de.innot.avreclipse.compiler.option.def" useByScannerDiscovery="false" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="__AVR_ATtiny88__"/>
 								</option>

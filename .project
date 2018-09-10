@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <projectDescription>
-	<name>esp8266_reset_pulsegen</name>
+	<name>esp8266_reset_controller</name>
 	<comment></comment>
 	<projects>
 	</projects>
