@@ -44,14 +44,17 @@ volatile uint8_t do_eval_interrupt = FALSE;
 
 #define stop_timer_refrac \
 	TCCR1B &= ~((1 << CS12) | (1 << CS11) | (1 << CS10)); \
-	go_to_sleep = TRUE; \
 	TCNT1 = 0;
 
 ISR(INT0_vect, ISR_BLOCK) {
-	PORTB |= (1 << PB0);
-	start_timer(0x8a);
 	EIMSK &= ~(1 << INT0); //erst mal keine INT0 interrupts mehr
 	EIFR |= (1 << INTF0);
+	do_eval_interrupt = TRUE;
+}
+
+ISR(INT1_vect, ISR_BLOCK) {
+	EIMSK &= ~(1 << INT1); //erst mal keine INT1 interrupts mehr
+	EIFR |= (1 << INTF1);
 	do_eval_interrupt = TRUE;
 }
 
@@ -71,7 +74,7 @@ void chip_setup() {
 	cli();
 
 	DDRB |= (1 << DDB0);
-	//pull-up
+	//pull-up int0 und int1
 	PORTD |= (1 << PD2) | (1 << PD3);
 	//interrupt on compare match a
 	TIMSK0 |= (1 << OCIE0A);
@@ -79,7 +82,7 @@ void chip_setup() {
 	TIMSK1 |= (1 << OCIE1B);
 	OCR1B = 0xff;
 
-//	int0 bei fallender flanke
+//	int0/int1 bei fallender flanke
 //	EICRA |= (1 << ISC01); TEST: Interrupt bei low level
 	EIMSK |= (1 << INT0) | (1 << INT1);
 	EIFR |= (1 << INTF0);
@@ -93,6 +96,11 @@ void eval_interrupt(void) {
 	do_eval_interrupt = FALSE;
 }
 
+void do_master_wakeup(void) {
+		PORTB |= (1 << PB0);
+		start_timer(0x8a);
+}
+
 void do_sleep() {
 	if (go_to_sleep == TRUE) {
 		sleep_bod_disable()
@@ -101,13 +109,16 @@ void do_sleep() {
 		sleep_mode()
 		;    // Now enter sleep mode
 	}
-	// aufgewacht. Rausfinden, warum
-	if (do_eval_interrupt == TRUE)
+	// aufgewacht. Rausfinden, warum und master wecken.
+	if (do_eval_interrupt == TRUE){
 		eval_interrupt();
+		do_master_wakeup();
+	}
 }
 
 int main(void) {
 	chip_setup();
+	init_twi_slave(0x90);
 	while (TRUE) {
 		do_sleep();
 	}
