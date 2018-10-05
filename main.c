@@ -10,6 +10,7 @@
 #include <avr/sleep.h>
 #include <avr/wdt.h>
 #include <util/twi.h>
+#include <stddef.h>
 #include "twislave.h"
 
 #define WAIT_CYCLES 10
@@ -20,7 +21,7 @@
 #define INT_SRC_LB_PULSE 0x1
 #define INT_SRC_ESP_PULSE 0x2
 
-volatile uint8_t go_to_sleep = TRUE;
+volatile uint8_t go_to_sleep = FALSE;
 volatile uint8_t interrupt_src = 0;
 volatile uint8_t do_eval_interrupt = FALSE;
 //volatile uint16_t int0_cnt;
@@ -89,16 +90,17 @@ void chip_setup() {
 	sei();
 }
 
-void eval_interrupt(void) {
+void eval_interrupt(volatile uint8_t *i2c_buffer) {
 	interrupt_src = 0;
 	interrupt_src |= ((PIND & PIND2) ? INT_SRC_LB_PULSE : 0);
 	interrupt_src |= ((PIND & PIND3) ? INT_SRC_ESP_PULSE : 0);
+	i2c_buffer[0] = 0xaa;
 	do_eval_interrupt = FALSE;
 }
 
 void do_master_wakeup(void) {
-		PORTB |= (1 << PB0);
-		start_timer(0x8a);
+	PORTB |= (1 << PB0);
+	start_timer(0x8a);
 }
 
 void do_sleep() {
@@ -110,15 +112,19 @@ void do_sleep() {
 		;    // Now enter sleep mode
 	}
 	// aufgewacht. Rausfinden, warum und master wecken.
-	if (do_eval_interrupt == TRUE){
-		eval_interrupt();
+	if (do_eval_interrupt == TRUE) {
+		eval_interrupt(i2cdata);    //int quelle in i2cbuffer schreiben
 		do_master_wakeup();
 	}
 }
 
 int main(void) {
 	chip_setup();
-	init_twi_slave(0x90);
+	DDRB |= (1 << DDB0);
+	uint8_t addr = 0b10001110; //komisches Format (MSB 7:1 im TWAR enthalten Addresse!!)
+	init_twi_slave(addr);
+	for (int n = 0; n < i2c_buffer_size; n++)
+		i2cdata[n] = 0xa;
 	while (TRUE) {
 		do_sleep();
 	}
