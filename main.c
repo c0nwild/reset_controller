@@ -96,6 +96,7 @@ void chip_setup() {
 void eval_interrupt(volatile uint8_t *i2c_buffer) {
 	interrupt_src |= ((PIND & PIND2) ? INT_SRC_ESP_PULSE : 0);
 	i2c_buffer[0] |= interrupt_src;
+	i2c_buffer[1] &= ~interrupt_src;
 	interrupt_src = 0;
 	do_eval_interrupt = FALSE;
 }
@@ -106,12 +107,15 @@ void do_master_wakeup(volatile uint8_t *i2c_buffer) {
 		start_timer(0x20);
 		//Verriegelung gegen erneuten reset
 		i2c_buffer[0] &= ~(STATUS_SYS_ALLOWRESET);
+		i2c_buffer[1] |= STATUS_SYS_ALLOWRESET;
 	}
 }
 
 uint8_t allow_sleep(volatile uint8_t *i2c_buffer) {
-	uint8_t rv;
-	rv = (i2c_buffer[0] & STATUS_SYS_ALLOWRESET) ? TRUE : FALSE;
+	uint8_t rv = FALSE;
+	if (i2c_buffer[0] & STATUS_SYS_ALLOWRESET)
+		rv = TRUE;
+
 	return rv;
 }
 
@@ -136,6 +140,9 @@ int main(void) {
 	chip_setup();
 	uint8_t addr = (i2c_addr << 1); //komisches Format (MSB 7:1 im TWAR enthalten Addresse!!)
 	init_twi_slave(addr);
+
+	i2cdata[1] = 0xff;
+
 	while (TRUE) {
 		main_loop();
 	}

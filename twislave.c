@@ -24,7 +24,6 @@ void init_twi_slave(uint8_t adr) {
 	TWAR = adr; //Adresse setzen
 	TWCR &= ~((1 << TWSTA) | (1 << TWSTO));
 	TWCR |= (1 << TWINT) | (1 << TWEA) | (1 << TWEN) | (1 << TWIE);
-	buffer_adr = 0xFF;
 	sei();
 }
 
@@ -53,31 +52,19 @@ ISR (TWI_vect) {
 	case TW_SR_SLA_ACK: // 0x60 Slave Receiver, Slave wurde adressiert
 		TWCR_ACK
 		; // nächstes Datenbyte empfangen, ACK danach senden
-		buffer_adr = 0xFF; //Bufferposition ist undefiniert
+		buffer_adr = 0; //Bufferposition ist undefiniert
 		break;
 
 	case TW_SR_DATA_ACK: // 0x80 Slave Receiver, ein Datenbyte wurde empfangen
 		data = TWDR; //Empfangene Daten auslesen
-//		if (buffer_adr == 0xFF) //erster Zugriff, Bufferposition setzen
-//				{
-//			//Kontrolle ob gewünschte Adresse im erlaubten bereich
-//			if (data < i2c_buffer_size + 1) {
-//				buffer_adr = data; //Bufferposition wie adressiert setzen
-//			} else {
-//				buffer_adr = 0; //Adresse auf Null setzen. Ist das sinnvoll? TO DO!
-//			}
-//			TWCR_ACK
-//			;// nächstes Datenbyte empfangen, ACK danach, um nächstes Byte anzufordern
-//		} else //weiterer Zugriff, nachdem die Position im Buffer gesetzt wurde. NUn die Daten empfangen und speichern
-//		{
 
-//			if (buffer_adr < i2c_buffer_size + 1) {
-		i2cdata[0] = data; //Daten in Buffer schreibe
-//			}
-//		buffer_adr++; //Buffer-Adresse weiterzählen für nächsten Schreibzugriff
+		if (buffer_adr < i2c_buffer_size) {
+			i2cdata[buffer_adr] = data; //Daten in Buffer schreiben
+			++buffer_adr;
+		}
+
 		TWCR_ACK
 		;
-//	}
 		break;
 
 //Slave transmitter
@@ -85,21 +72,15 @@ ISR (TWI_vect) {
 	case TW_ST_SLA_ACK:
 		//0xA8 Slave wurde im Lesemodus adressiert und hat ein ACK zurückgegeben.
 		//Hier steht kein break! Es wird also der folgende Code ebenfalls ausgeführt!
+		buffer_adr = 0;
 
 	case TW_ST_DATA_ACK:
 		//0xB8 Slave Transmitter, Daten wurden angefordert
 
-//		if (buffer_adr == 0xFF) //zuvor keine Leseadresse angegeben!
-//				{
-//			buffer_adr = 0;
-//		}
-
-//	if (buffer_adr < i2c_buffer_size + 1) {
-		TWDR = i2cdata[0]; //Datenbyte senden
-//		buffer_adr++; //bufferadresse für nächstes Byte weiterzählen
-//	} else {
-//		TWDR = 0; //Kein Daten mehr im Buffer
-//	}
+		if (buffer_adr < i2c_buffer_size) {
+			TWDR = i2cdata[buffer_adr]; //Datenbyte senden
+			++buffer_adr; //bufferadresse für nächstes Byte weiterzählen
+		}
 		TWCR_ACK
 		;
 		break;
@@ -116,7 +97,6 @@ ISR (TWI_vect) {
 	default:
 		TWCR_RESET
 		;
-		buffer_adr = 0xFF;
 		break;
 
 	} //end.switch (TW_STATUS)
