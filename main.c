@@ -125,8 +125,10 @@ void main_loop() {
 		;
 		set_sleep_mode(SLEEP_MODE_PWR_DOWN);
 		EIMSK |= (1 << INT0) | (1 << INT1);
-		sleep_mode()
-		;    // Now enter sleep mode
+		if (PIND & (1 << PD2)) {
+			sleep_mode()
+			;    // Now enter sleep mode
+		}
 	}
 	// aufgewacht. Rausfinden, warum und master wecken.
 	if (do_eval_interrupt == TRUE) {
