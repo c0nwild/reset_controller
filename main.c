@@ -18,15 +18,14 @@
 #define FALSE 0u
 #define TRUE 1u
 
-//Quellen fuer INT's
+// INT sources
 #define INT_SRC_MCP_PULSE (1 << 0) //MCP23017
 #define INT_SRC_ESP_PULSE (1 << 1) //ESP8266
 
-//Init merker
-#define STATUS_SYS_INITIALIZED (1 << 2) //Merker für erstes Init nach Poweroff
+//Init flag
+#define STATUS_SYS_INITIALIZED (1 << 2) //first init after power off
 
-//Freigabe für sleep
-#define STATUS_SYS_ALLOWRESET (1 << 3) //Freigabemerker für Reset, kommt vom ESP8266
+#define STATUS_SYS_ALLOWRESET (1 << 3) //reset release, set by ESP8266
 
 volatile uint8_t go_to_sleep = FALSE;
 volatile uint8_t interrupt_src = 0;
@@ -47,24 +46,24 @@ const uint8_t i2c_addr = 0x47;
 	TCCR0A &= ~((1 << CS02) | (1 << CS01) | (1 << CS00)); \
 	TCNT0 = 0; \
 
-//INT vom MCP23017
+//INT from MCP23017
 ISR(INT0_vect, ISR_BLOCK) {
 	uint8_t i_src;
 	i_src = interrupt_src;
 	i_src |= INT_SRC_MCP_PULSE;
-	EIMSK &= ~(1 << INT0); //erst mal keine INT0 interrupts mehr
+	EIMSK &= ~(1 << INT0); //disable INT0
 	EIFR |= (1 << INTF0);
 	do_eval_interrupt = TRUE;
 	go_to_sleep = FALSE;
 	interrupt_src = i_src;
 }
 
-// INT vom ESP8266
+// INT from ESP8266
 ISR(INT1_vect, ISR_BLOCK) {
 	uint8_t i_src;
 	i_src = interrupt_src;
 	i_src |= INT_SRC_ESP_PULSE;
-	EIMSK &= ~(1 << INT1); //erst mal keine INT1 interrupts mehr
+	EIMSK &= ~(1 << INT1); //disable INT1
 	EIFR |= (1 << INTF1);
 	do_eval_interrupt = TRUE;
 	go_to_sleep = FALSE;
@@ -82,12 +81,12 @@ void chip_setup() {
 	cli();
 
 	DDRB |= (1 << DDB0);
-	//pull-up int0 und int1
+	//pull-up int0 and int1
 	PORTD |= (1 << PD2) | (1 << PD3);
 	//interrupt on compare match a
 	TIMSK0 |= (1 << OCIE0A);
 
-//	Interrupt bei low level
+//	Interrupt at low level
 	EIMSK |= (1 << INT0) | (1 << INT1);
 	EIFR |= (1 << INTF0) | (1 << INTF1);
 	sei();
@@ -105,7 +104,7 @@ void do_master_wakeup(volatile uint8_t *i2c_buffer) {
 	if (i2c_buffer[0] & STATUS_SYS_ALLOWRESET) {
 		PORTB |= (1 << PB0);
 		start_timer(0x20);
-		//Verriegelung gegen erneuten reset
+		//lock reset condition
 		i2c_buffer[0] &= ~(STATUS_SYS_ALLOWRESET);
 		i2c_buffer[1] |= STATUS_SYS_ALLOWRESET;
 	}
@@ -130,17 +129,17 @@ void main_loop() {
 			;    // Now enter sleep mode
 		}
 	}
-	// aufgewacht. Rausfinden, warum und master wecken.
+	// wake up, but why
 	if (do_eval_interrupt == TRUE) {
-		eval_interrupt(i2cdata);    //int quelle in i2cbuffer schreiben
-		do_master_wakeup(i2cdata); //aufwecken, wenn freigabe erteilt
+		eval_interrupt(i2cdata);    //write int src to i2c buffer
+		do_master_wakeup(i2cdata); //wakey, wakey only if allowed to do so
 	}
 	go_to_sleep = allow_sleep(i2cdata);
 }
 
 int main(void) {
 	chip_setup();
-	uint8_t addr = (i2c_addr << 1); //komisches Format (MSB 7:1 im TWAR enthalten Addresse!!)
+	uint8_t addr = (i2c_addr << 1); //strange format (MSB 7:1 in TWAR for keeping the i2c address!!)
 	init_twi_slave(addr);
 
 	i2cdata[1] = 0xff;
