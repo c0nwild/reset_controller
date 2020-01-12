@@ -94,6 +94,9 @@ void chip_setup() {
 
 void eval_interrupt(volatile uint8_t *i2c_buffer) {
 	interrupt_src |= ((PIND & PIND2) ? INT_SRC_ESP_PULSE : 0);
+	interrupt_src |= ((PIND & PIND3) ? INT_SRC_MCP_PULSE : 0);
+	i2c_buffer[0] &= ~0x3;
+	i2c_buffer[1] |= 0x3;
 	i2c_buffer[0] |= interrupt_src;
 	i2c_buffer[1] &= ~interrupt_src;
 	interrupt_src = 0;
